@@ -6,7 +6,7 @@ const authMiddlware = require("../middlewares/auth.middleware.cjs");
 const { isAdmin } = require("../middlewares/isAdmin.middleware.cjs");
 
 // get all products
-router.get("/", authMiddlware, productController.getAllProducts);
+router.get("/", productController.getAllProducts);
 
 // create new product
 router.post(
