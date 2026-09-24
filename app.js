@@ -16,7 +16,7 @@ const cartsRouter = require("./routes/cart.router.cjs");
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
-// connectDB();
+connectDB();
 
 // ✅ المسارات
 app.use("/api/products", productRouter);
