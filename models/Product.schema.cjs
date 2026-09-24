@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
+const schema = mongoose.Schema
 
-const ProductSchema = new mongoose.Schema(
+const productSchema = new schema(
   {
     title: {
       type: String,
@@ -63,6 +64,6 @@ const ProductSchema = new mongoose.Schema(
 );
 
 // تسريع عمليات البحث بالكلمات المفتاحية في عنوان المنتج
-ProductSchema.index({ title: "text" });
+productSchema.index({ title: "text" });
 
-module.exports = mongoose.model("Product", ProductSchema);
+module.exports = mongoose.model("Product", productSchema);
