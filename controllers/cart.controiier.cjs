@@ -1,5 +1,5 @@
 const cartModel = require("../models/cart.schema.cjs");
-const productModel = require("../models/Product.schema.cjs");
+const productModel = require("../models/product.schema.cjs");
 const { calcTotalCartPrice } = require("../utils/calcTotalCartPrice.utils.cjs");
 
 const mongoose = require("mongoose");

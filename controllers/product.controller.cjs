@@ -1,4 +1,4 @@
-const productModel = require("../models/Product.schema.cjs");
+const productModel = require("../models/product.schema.cjs");
 const cloudinary = require("cloudinary").v2;
 
 // get all products
