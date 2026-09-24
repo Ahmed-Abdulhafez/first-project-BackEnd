@@ -13,6 +13,10 @@ router.get("/verify-email/:token", userController.verifyEmail);
 // login User
 router.post("/login", userController.login);
 
+// logout user
+router.post("/logout", userController.logout);
+
+
 // API GET All Users
 router.get("/", authMiddlware, isAdmin, userController.getAllUsers);
 

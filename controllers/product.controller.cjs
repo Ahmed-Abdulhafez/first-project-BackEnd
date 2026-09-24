@@ -26,17 +26,17 @@ exports.getAllProducts = async (req, res) => {
     const pageNumber = Number(page) || 1;
     const limitNumber = Number(limit) || 10;
     const skip = (pageNumber - 1) * limitNumber;
-    const totalBooks = await bookModel.countDocuments(queryArgs);
-    const totalPages = Math.ceil(totalBooks / limitNumber);
+    const totalProducts = await productModel.countDocuments(queryArgs);
+    const totalPages = Math.ceil(totalProducts / limitNumber);
 
-    const products = await bookModel
+    const products = await productModel
       .find(queryArgs)
       .populate("category", "name")
       .skip(skip)
       .limit(limitNumber);
 
     return res.status(200).json({
-      message: "Books fetched successfully",
+      message: "Products fetched successfully",
       pagination: {
         totalProducts,
         totalPages,
@@ -145,13 +145,13 @@ exports.createNewProduct = async (req, res) => {
 // updated product
 exports.updatedProduct = async (req, res) => {
   try {
-    let { title, desc, price, brand, category, isFeatured } = req.body;
-    let updateData = { title, desc, price, brand, category, isFeatured };
+    let { title, desc, price, stock, brand, category, isFeatured } = req.body;
+    let updateData = { title, desc, price, stock, brand, category, isFeatured };
 
     updateData = Object.fromEntries(
       Object.entries(updateData).filter(([key, value]) => value !== undefined),
     );
-
+    const product = await productModel.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: "Product not found!" });
     }

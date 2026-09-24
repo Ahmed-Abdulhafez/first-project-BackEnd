@@ -8,6 +8,8 @@ const cookieParser = require("cookie-parser");
 const productRouter = require("./routes/product.router.cjs");
 const userRouter = require("./routes/user.router.cjs");
 const categoryRouter = require("./routes/category.router");
+const cartsRouter = require("./routes/cart.router.cjs");
+
 
 
 
@@ -20,6 +22,8 @@ app.use(express.json());
 app.use("/api/products", productRouter);
 app.use("/api/users", userRouter);
 app.use("/api/categories", categoryRouter);
+app.use("/api/carts", cartsRouter);
+
 
 
 const PORT = process.env.PORT || 5000;

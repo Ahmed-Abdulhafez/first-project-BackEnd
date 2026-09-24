@@ -183,6 +183,7 @@ exports.login = async (req, res) => {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 24 * 60 * 60 * 1000,
+      path: "/",
     });
 
     // 8. Send response
@@ -198,6 +199,25 @@ exports.login = async (req, res) => {
   } catch (error) {
     console.error("Error in login controller:", error);
     return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// logout user
+exports.logout = async (req, res) => {
+  try {
+    res.clearCookie("token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+    });
+
+    return res.status(200).json({
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Error in logout:", error);
+    return res.status(500).json({ message: "Server Error" });
   }
 };
 
