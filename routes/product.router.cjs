@@ -27,7 +27,7 @@ router.put(
 );
 
 // get product By id
-router.get("/:id", authMiddlware, productController.getProductById);
+router.get("/:id",  productController.getProductById);
 
 // deleted product
 router.delete("/:id", authMiddlware, isAdmin, productController.deleteProduct);
