@@ -224,10 +224,16 @@ exports.logout = async (req, res) => {
 // get Profile
 exports.getProfile = async (req, res) => {
   try {
-    const user = await userModel.findById(req.params._id).select("-password");
+    // جلب الـ ID من التوكن (req.user) الذي أضافه الميدل وير
+    // ملاحظة: تأكد من اسم المتغير حسب ما قمت بتخزينه أثناء عمل jwt.sign (قد يكون id أو _id)
+    const userId = req.user._id || req.user.id || req.user.userId;
+
+    const user = await userModel.findById(userId).select("-password");
+
     if (!user) {
-      return res.status(404).json({ message: "user not found!" });
+      return res.status(404).json({ message: "المستخدم غير موجود!" });
     }
+
     return res
       .status(200)
       .json({ message: "Profile retrieved successfully", data: user });
