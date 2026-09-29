@@ -10,10 +10,26 @@ const userRouter = require("./routes/user.router.cjs");
 const categoryRouter = require("./routes/category.router");
 const cartsRouter = require("./routes/cart.router.cjs");
 
+const allowedOrigins = [
+  "http://localhost:3000",
+];
 
-
-
-app.use(cors());
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(cookieParser());
 app.use(express.json());
 connectDB();
@@ -23,8 +39,6 @@ app.use("/api/products", productRouter);
 app.use("/api/users", userRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/carts", cartsRouter);
-
-
 
 const PORT = process.env.PORT || 5000;
 
