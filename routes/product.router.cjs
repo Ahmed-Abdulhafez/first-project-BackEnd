@@ -32,4 +32,7 @@ router.get("/:id",  productController.getProductById);
 // deleted product
 router.delete("/:id", authMiddlware, isAdmin, productController.deleteProduct);
 
+// like product
+router.post("/:id/like", authMiddlware, productController.toggleLikeProduct);
+
 module.exports = router;

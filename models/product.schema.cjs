@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const schema = mongoose.Schema
+const schema = mongoose.Schema;
 
 const productSchema = new schema(
   {
@@ -18,7 +18,18 @@ const productSchema = new schema(
       type: Number,
       required: [true, "السعر مطلوب"],
       default: 0,
-      min: [0, "السعر لا يمكن أن يكون أقل من 0"], // حماية من القيم السلبية
+      min: [0, "السعر لا يمكن أن يكون أقل من 0"],
+    },
+    offerPrice: {
+      type: Number,
+      default: 0, 
+      validate: {
+        validator: function (value) {
+          if (value === 0) return true;
+          return value < this.price;
+        },
+        message: "السعر المخفض يجب أن يكون أقل من السعر الأصلي",
+      },
     },
     brand: {
       type: String,
@@ -34,7 +45,7 @@ const productSchema = new schema(
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category",
-      required: [true, "قسم المنتج مطلوب"], 
+      required: [true, "قسم المنتج مطلوب"],
     },
     images: [
       {
@@ -57,10 +68,14 @@ const productSchema = new schema(
       default: 0,
       min: 0,
     },
+    likesCount: {
+      type: Number,
+      default: 0,
+    },
   },
-  { 
-    timestamps: true 
-  } 
+  {
+    timestamps: true,
+  },
 );
 
 // تسريع عمليات البحث بالكلمات المفتاحية في عنوان المنتج

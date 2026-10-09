@@ -1,5 +1,6 @@
 const categoryModle = require("../models/category.schema.cjs");
 
+// Create Category
 exports.createCategory = async (req, res) => {
   try {
     const { name } = req.body;

@@ -96,6 +96,7 @@ exports.createNewProduct = async (req, res) => {
       title,
       desc,
       price,
+      offerPrice,
       category,
       brand,
       stock,
@@ -108,6 +109,7 @@ exports.createNewProduct = async (req, res) => {
       title,
       desc,
       price,
+      offerPrice,
       category,
       brand,
       stock: stock || 0,
@@ -143,44 +145,84 @@ exports.createNewProduct = async (req, res) => {
 };
 
 // updated product
-exports.updatedProduct = async (req, res) => {
+exports.updateProduct = async (req, res) => {
+  // مصفوفة الصور الجديدة لسهولة الوصول إليها في الـ catch
+  const files = Array.isArray(req.files) ? req.files : [];
+
   try {
-    let { title, desc, price, stock, brand, category, isFeatured } = req.body;
-    let updateData = { title, desc, price, stock, brand, category, isFeatured };
+    const { id } = req.params;
 
-    updateData = Object.fromEntries(
-      Object.entries(updateData).filter(([key, value]) => value !== undefined),
-    );
-    const product = await productModel.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found!" });
-    }
+    const {
+      title,
+      desc,
+      price,
+      offerPrice,
+      stock,
+      brand,
+      category,
+      isFeatured,
+    } = req.body;
 
-    if (product.images && product.images.length > 0) {
-      console.log("Starting to delete old images...");
+    const updateData = {
+      title,
+      desc,
+      price,
+      offerPrice,
+      stock,
+      brand,
+      category,
+      isFeatured,
+    };
 
-      for (let image of product.images) {
-        const result = await cloudinary.uploader.destroy(image.public_id);
-
-        console.log(`Deletion result for image ${image.public_id}:`, result);
+    // تنظيف الحقول غير المرسلة
+    Object.keys(updateData).forEach((key) => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
       }
-    }
-
-    updateData.images = req.files.map((file) => {
-      return {
-        url: file.path,
-        public_id: file.filename,
-      };
     });
 
-    const updatedProduct = await productModel.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true },
-    );
+    const product = await productModel.findById(id);
+    if (!product) {
+      // إذا لم يتم العثور على المنتج، نحذف الصور الجديدة التي حُمّلت للتو
+      if (files.length > 0) {
+        const cleanupPromises = files.map((file) =>
+          cloudinary.uploader.destroy(file.filename),
+        );
+        await Promise.allSettled(cleanupPromises);
+      }
 
-    if (!updatedProduct) {
-      return res.status(404).json({ message: "Product not found!" });
+      return res.status(404).json({
+        message: "Product not found!",
+      });
+    }
+
+    // الاحتفاظ بالصور القديمة لاستخدامها بعد نجاح الحفظ
+    const oldImages = product.images || [];
+
+    // تحديث البيانات في الـ Document
+    Object.assign(product, updateData);
+
+    // إذا وصلت صور جديدة، نحدث مصفوفة الصور
+    if (files.length > 0) {
+      product.images = files.map((file) => ({
+        url: file.path,
+        public_id: file.filename,
+      }));
+    }
+
+    // تشغيل الـ Validators وتحديث القاعدة
+    const updatedProduct = await product.save();
+
+    // حذف الصور القديمة بالتوازي (In Parallel) لسرعة الأداء
+    if (files.length > 0 && oldImages.length > 0) {
+      const deletePromises = oldImages
+        .filter((img) => img.public_id)
+        .map((img) => cloudinary.uploader.destroy(img.public_id));
+
+      // نستخدم Promise.allSettled لضمان استمرار الكود حتى لو فشلت صورة
+      Promise.allSettled(deletePromises).catch((err) =>
+        console.error("Error deleting old images from Cloudinary:", err),
+      );
     }
 
     return res.status(200).json({
@@ -188,8 +230,28 @@ exports.updatedProduct = async (req, res) => {
       data: updatedProduct,
     });
   } catch (error) {
-    console.log("Error updating Product:", error);
-    return res.status(500).json({ message: "Server Error" });
+    // تراجع (Rollback): إذا فشل الحفظ في قاعدة البيانات، نحذف الصور الجديدة المرفوعة
+    if (files.length > 0) {
+      const rollbackPromises = files.map((file) =>
+        cloudinary.uploader.destroy(file.filename),
+      );
+      await Promise.allSettled(rollbackPromises);
+    }
+
+    console.error("Error updating Product:", error);
+
+    if (error.name === "ValidationError" || error.name === "CastError") {
+      return res.status(400).json({
+        message: "Invalid product data",
+        errors: error.errors
+          ? Object.values(error.errors).map((e) => e.message)
+          : [error.message],
+      });
+    }
+
+    return res.status(500).json({
+      message: "Server Error",
+    });
   }
 };
 
@@ -213,5 +275,54 @@ exports.deleteProduct = async (req, res) => {
   } catch (error) {
     console.log("Error deleting Product:", error);
     return res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// Toggle like/unlike product
+exports.toggleLikeProduct = async (req, res) => {
+  try {
+    const productId = req.params.id; // معرف المنتج من الرابط (URL)
+    const userId = req.user.id; // معرف المستخدم من الـ Token
+
+    // 1. البحث عن المنتج في قاعدة البيانات
+    const product = await Product.findById(productId);
+
+    if (!product) {
+      return res.status(404).json({ message: "المنتج غير موجود" });
+    }
+
+    // 2. التحقق مما إذا كان المستخدم موجوداً في مصفوفة الإعجابات
+    const isLiked = product.likes.includes(userId);
+
+    if (isLiked) {
+      // 3 أ: إذا كان معجباً به، نقوم بإلغاء الإعجاب (حذفه من المصفوفة)
+      // نستخدم $pull الخاص بـ MongoDB لإزالة الـ userId من مصفوفة likes
+      await Product.findByIdAndUpdate(
+        productId,
+        { $pull: { likes: userId } },
+        { new: true }, // لإرجاع النسخة المحدثة من المنتج
+      );
+
+      return res.status(200).json({
+        message: "تم إلغاء الإعجاب بنجاح",
+        isLiked: false,
+      });
+    } else {
+      // 3 ب: إذا لم يكن معجباً به، نقوم بالإضافة (إعجاب)
+      // نستخدم $addToSet بدلاً من $push لضمان عدم إضافة نفس الـ userId أكثر من مرة
+      await Product.findByIdAndUpdate(
+        productId,
+        { $addToSet: { likes: userId } },
+        { new: true },
+      );
+
+      return res.status(200).json({
+        message: "تم الإعجاب بالمنتج بنجاح",
+        isLiked: true,
+      });
+    }
+  } catch (error) {
+    console.error("خطأ في عملية الإعجاب:", error);
+    res.status(500).json({ message: "حدث خطأ في الخادم" });
   }
 };
